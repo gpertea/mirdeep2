@@ -249,31 +249,23 @@ sub make_dir_tmp{
 
 
 sub handle_one_file{
-    my($file_reads,$prefix)=@_;
-
-    my $file_reads_latest=process_reads($file_reads,$prefix);
-
-    if($options{p}){
-        my $file_mapping_latest=map_reads($file_reads_latest);
-    }
-
-	remove_dir_tmp();
-    return;
+  my($file_reads,$prefix)=@_;
+  my $file_reads_latest=process_reads($file_reads,$prefix);
+  if($options{p}){
+     my $file_mapping_latest=map_reads($file_reads_latest);
+  }
+  remove_dir_tmp();
+  return;
 }
 
-
-
 sub process_reads{
-
-    my($file_reads_latest,$prefix)=@_;
-    $orig_file_reads=$file_reads_latest;
-	if($file_reads_latest =~ /([_\-.a-zA-Z0-9]+)$/){$orig_file_reads=$1;}
-	#	die $orig_file_reads,"\n";
-
-    $dir=make_dir_tmp("_${prefix}_$orig_file_reads");
-    #parse Solexa to fasta
-    if($options{h}){
-
+ my($file_reads_latest,$prefix)=@_;
+ $orig_file_reads=$file_reads_latest;
+ if($file_reads_latest =~ /([_\-.a-zA-Z0-9]+)$/){$orig_file_reads=$1;}
+ #	die $orig_file_reads,"\n";
+ $dir=make_dir_tmp("_${prefix}_$orig_file_reads");
+ #parse Solexa to fasta
+ if($options{h}){
         ## parse fastq to fasta
         if($options{e}){
 
@@ -515,20 +507,13 @@ sub check_file_format_and_option{
 		}
 		close IN;
 	}elsif($format eq 'e'){
-		open IN,$file or die "Cannot open FASTQ file supplied by option -e\n";
+		my $fh=open_fastq($file) || die "Cannot open FASTQ file supplied by option -e\n";
+		#open IN,$file or die "Cannot open FASTQ file supplied by option -e\n";
 		my $i=0;
 		my $mes="Please make sure your file is in accordance with the FASTQ format specifications";
-		while(<IN>){
-            chomp;
-            $i++;
-
-			if($i == 1){if(/^@\S+/){}else{die "First line of FASTQ reads file is not in accordance with the fastq format specifications\n$mes\n$warning";}}
-			if($i == 2){if(/^\S+$/){}else{die "Second line of FASTQ reads file contains whitespace in sequence\n$mes\n$warning";}}
-			if($i == 3){if(/^\+/){}else{die "Third line of FASTQ reads file does not start with a '+' character.\n$mes\n$warning";}}
-			if($i == 4){if(/^\S+$/){}else{die "Fourth line of FASTQ reads file contains whitespace\n$mes\n$warning";}}
-			last if($i == 4);
-		}
-		close IN;
+		my ($rname, $rseq, $rquals)=getFastq($fh);
+		die("Invalid FASTQ file $file. $mes\n") unless $rname && length($rseq)==length($rquals);
+		close($fh);
 	}else{
 	}
 }
@@ -748,15 +733,62 @@ sub check_install{
 	$a=abs_path($a);
 	my ( $name0, $bn, $extension0 ) = fileparse ( $a, '\..*' );
 	if(not -f "$bn/../install_successful"){
-		die "Please run the install.pl script first before using the miRDeep2 package
-The install script is located in ",substr($bn,0,length($bn)-4)," so just do
+		die q/Please run the install.pl script first before using the miRDeep2 package
+The install script is located in /.substr($bn,0,length($bn)-4).q/ so just do
 
-cd ",substr($bn,0,length($bn)-4),
-"\nperl install.pl
-
-";
+cd /.substr($bn,0,length($bn)-4).
+"\nperl install.pl\n";
 	}
 }
 
+sub open_fastq {
+ my ($fn)=@_;
+ my $funz;
+ my $fh;
+ if ($fn=~m/\.bzi?p?2$/) {
+  $funz='bzip2';
+ }
+ elsif ($fn=~m/.g?zi?p?$/) {
+  $funz='gzip';
+ }
+ if ($funz) {
+  open($fh, $funz." -cd '".$fn."'|") || 
+    die("Error creating decompression pipe: $funz -cd '$fn' !\n");
+ }
+ else {
+    open($fh, $fn) || die("Error opening file $fn ! \n");
+ }
+ return $fh;
+}
 
 
+sub getFastq {
+ my $fh=$_[0]; # file handle
+ #parses next FASTQ record
+ #returns ($readname, $readseq, $readquals)
+ my ($rname, $rseq, $rquals);
+ #while (<$fh>) {
+ #  ($rname)=(m/^@(\S+)/);
+ #  last if $rname;
+ #}
+ $_=<$fh>;
+ return ($rname, $rseq, $rquals) if length($_)<3;
+ ($rname)=(m/^@(\S+)/);
+ die("Error reading FASTQ record:\n$_\n") unless $rname;
+ while (<$fh>) {
+   last if m/^\+/;
+   chomp;
+   $rseq.=$_;
+   die("Error: sequence $rname too large?\n") if length($rseq)>100000;
+ }
+ if ($_) {
+   while (<$fh>) {
+     chomp;
+     $rquals.=$_;
+     last if (length($rseq)<=length($rquals));
+   }
+   die("Error: seq and qual lengths differ for $rname!\n") 
+     unless length($rseq)==length($rquals);
+ }
+ return ($rname, $rseq, $rquals);
+}

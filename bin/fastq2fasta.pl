@@ -20,34 +20,66 @@ use strict;
 
 my $file = $ARGV[0] or die "Usage: \n\n $0 fastq file > outputfile\n";;
 
-open IN,"<$file" or die "File $file not found error here\n";
-my $c = 0;
-my @line = ();
-my $id ='';
-my $seq = '';
-
+#open IN,"<$file" or die "File $file not found error here\n";
 my $processed = 0;
-
-while(<IN>){
-    chomp;
-    $c++;
-    if($c == 1){
-        $processed++;
-#        print STDERR "$processed reads processed\r";
-        @line = split();
-        $id = $line[0];
-        $id =~ s/\@//;
-
-    }elsif($c == 2){
-        $seq = $_;
-    }elsif($c == 4){
-        $c = 0;
-        print ">seq_$processed\n$seq\n";
-        $id ='';
-        @line =();
-        $seq ='';
-    }else{}
+my $fh=open_fastq($file) || die "File $file error!\n";;
+while(1){
+  my ($rname, $rseq, $rquals)=getFastq($fh);
+  last unless $rname;
+  $processed++;
+  print ">seq_$processed\n$rseq\n";
 }
-close IN;
+close($fh);
 exit;
 #print STDERR "$processed reads processed\n\n";
+
+sub open_fastq {
+ my ($fn)=@_;
+ my $funz;
+ my $fh;
+ if ($fn=~m/\.bzi?p?2$/) {
+  $funz='bzip2';
+ }
+ elsif ($fn=~m/.g?zi?p?$/) {
+  $funz='gzip';
+ }
+ if ($funz) {
+  open($fh, $funz." -cd '".$fn."'|") || 
+    die("Error creating decompression pipe: $funz -cd '$fn' !\n");
+ }
+ else {
+    open($fh, $fn) || die("Error opening file $fn ! \n");
+ }
+ return $fh;
+}
+
+sub getFastq {
+ my $fh=$_[0]; # file handle
+ #parses next FASTQ record
+ #returns ($readname, $readseq, $readquals)
+ my ($rname, $rseq, $rquals);
+ #while (<$fh>) {
+ #  ($rname)=(m/^@(\S+)/);
+ #  last if $rname;
+ #}
+ $_=<$fh>;
+ return ($rname, $rseq, $rquals) if length($_)<3;
+ ($rname)=(m/^@(\S+)/);
+ die("Error reading FASTQ record:\n$_\n") unless $rname;
+ while (<$fh>) {
+   last if m/^\+/;
+   chomp;
+   $rseq.=$_;
+   die("Error: sequence $rname too large?\n") if length($rseq>100000);
+ }
+ if ($_) {
+   while (<$fh>) {
+     chomp;
+     $rquals.=$_;
+     last if (length($rseq)<=length($rquals));
+   }
+   die("Error: seq and qual lengths differ for $rname!\n") 
+     unless length($rseq)==length($rquals);
+ }
+ return ($rname, $rseq, $rquals);
+}

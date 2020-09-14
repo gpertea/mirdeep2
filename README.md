@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/rajewsky-lab/mirdeep2.svg?branch=master)](https://travis-ci.org/rajewsky-lab/mirdeep2)
+## Modifications of some of the perl scripts for additional speed and features.
 
 # miRDeep2 `README`
 
