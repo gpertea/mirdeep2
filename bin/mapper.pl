@@ -78,6 +78,9 @@ Other:
 
 -o              number of threads to use for bowtie
 
+-R dir          resume mapping in directory dir
+-O out_dir      use out_dir suffix instead of the date
+
 Example of use:
 
 $0 reads_seq.txt -a -h -i -j -k TCGTATGCCGTCTTCTGCTTGT  -l 18 -m -p h_sapiens_37_asm -s reads.fa -t reads_vs_genome.arf -v
@@ -126,7 +129,7 @@ foreach(@ARGV){
 check_line($line);
 
 my %options=();
-getopts("abcdeg:hijk:l:mp:qs:t:uvnr:o:",\%options);
+getopts("abcdeg:hijk:l:mp:qs:t:uvnr:o:R:O:",\%options);
 
 
 `rm $options{'s'}` if(defined $options{'s'} and -f $options{'s'} and $options{'n'});
@@ -135,7 +138,6 @@ getopts("abcdeg:hijk:l:mp:qs:t:uvnr:o:",\%options);
 if(not $options{'l'}){$options{'l'} = 18; }
 
 check_options();
-
 
 #################################### GLOBAL VARIABLES ################################################
 my $threads=1;
@@ -153,7 +155,10 @@ if($cores !~ /^\d+$/){
 	$cores=1;
 }
 
-if($threads > $cores){ print STDERR "More threads specified than cores on the system. Reducing the number of threads to $cores\n"; $threads=$cores;}
+if($threads > $cores){ 
+  print STDERR "More threads specified than cores on the system. Reducing the number of threads to $cores\n"; 
+  $threads=$cores;
+}
 chomp $threads;
 
 my $orig_file_reads='';
@@ -232,16 +237,20 @@ sub make_dir_tmp{
     my ($pref)=@_;
     my $ctime=time();
     my ($sec,$min,$hour,$day,$month,$year) = localtime($ctime);
+    my $suf=$options{'R'};
+    $suf=$options{'O'} unless $suf;
     $year+=1900;
     $month++;
+
     my $time=sprintf "%02d_%02d_%02d_t_%02d_%02d_%02d", $day, $month, $year, $hour, $min, $sec;
 
 	print MAP "\ntimestamp:\t$time\n\n";
 
 	my $num=rand(1);
 	my $chance=substr($num,2,10);
+    $suf="${chance}_$time" unless $suf;
     #make temporary directory
-    my $dir="dir_mapper${pref}_${chance}_$time";
+    my $dir="dir_mapper${pref}_$suf";
     mkdir $dir;
     return $dir;
 }
@@ -264,9 +273,13 @@ sub process_reads{
  if($file_reads_latest =~ /([_\-.a-zA-Z0-9]+)$/){$orig_file_reads=$1;}
  #	die $orig_file_reads,"\n";
  $dir=make_dir_tmp("_${prefix}_$orig_file_reads");
+ 
  #parse Solexa to fasta
  if($options{h}){
         ## parse fastq to fasta
+     if ($options{'R'} && -s "$dir/reads.fa") {
+        $file_reads_latest="$dir/reads.fa";
+     } else {
         if($options{e}){
 
 			print MAP "parsing fastq to fasta format\n";
@@ -293,80 +306,81 @@ sub process_reads{
 
             $file_reads_latest="$dir/reads.fa";
         }
-    }
+     }
+  }
 
-   #rna2dna
-    if($options{i}){
-
+  #rna2dna
+  if($options{i}) {
+     unless ($options{'R'} && -s "$dir/reads_dna.fa") {
 		print MAP "converting rna to dna alphabet\n";
 
-	if($options{v}){print STDERR "converting rna to dna alphabet\n";}
+	    if($options{v}){print STDERR "converting rna to dna alphabet\n";}
 
 		print MAP "rna2dna.pl $file_reads_latest > $dir/reads_dna.fa\n";
 
-	my $ret_rna2dna=`rna2dna.pl $file_reads_latest > $dir/reads_dna.fa`;
-
-	$file_reads_latest="$dir/reads_dna.fa";
-    }
+	    my $ret_rna2dna=`rna2dna.pl $file_reads_latest > $dir/reads_dna.fa`;
+     }
+  $file_reads_latest="$dir/reads_dna.fa";
+  }
 
 
     #discard entries that contain non-canonical letters
     if($options{j}){
-
+      unless ($options{'R'} && -s "$dir/reads_letters.fa") {
 		print MAP "discarding sequences with non-canonical letters\n";
 
-	if($options{v}){print STDERR "discarding sequences with non-canonical letters\n";}
+		if($options{v}){print STDERR "discarding sequences with non-canonical letters\n";}
 
 		print MAP "fastaparse.pl $file_reads_latest -b > $dir/reads_letters.fa 2>$dir/reads_discarded.fa\n";
 
-	my $ret_clip=`fastaparse.pl $file_reads_latest -b > $dir/reads_letters.fa 2>$dir/reads_discarded.fa`;
-
-	$file_reads_latest="$dir/reads_letters.fa";
+		my $ret_clip=`fastaparse.pl $file_reads_latest -b > $dir/reads_letters.fa 2>$dir/reads_discarded.fa`;
+       }
+      $file_reads_latest="$dir/reads_letters.fa";
     }
 
 
     #clip 3' adapters
-    if($options{k}){
-
+    if($options{k}) {
+      unless ($options{'R'} && -s "$dir/reads_clip.fa") {
 		print MAP "clipping 3' adapters\n";
 
-	if($options{v}){print STDERR "clipping 3' adapters\n";}
+	    if($options{v}){print STDERR "clipping 3' adapters\n";}
 
 		print MAP "clip_adapters.pl $file_reads_latest $options{k} > $dir/reads_clip.fa\n";
 
-	my $ret_clip=`clip_adapters.pl $file_reads_latest $options{k} > $dir/reads_clip.fa`;
-
-	$file_reads_latest="$dir/reads_clip.fa";
+	    my $ret_clip=`clip_adapters.pl $file_reads_latest $options{k} > $dir/reads_clip.fa`;
+      }
+	  $file_reads_latest="$dir/reads_clip.fa";
     }
-
 
     #discard short reads
     if($options{l}){
-
+      unless ($options{'R'} && -s "$dir/reads_no_short.fa") {
 		print MAP "discarding short reads\n";
 
-	if($options{v}){print STDERR "discarding short reads\n";}
+	    if($options{v}){print STDERR "discarding short reads\n";}
 
 		print MAP "fastaparse.pl $file_reads_latest -a $options{l} > $dir/reads_no_short.fa 2>$dir/reads_too_short\n";
 
-	my $ret_rem_short=`fastaparse.pl $file_reads_latest -a $options{l} > $dir/reads_no_short.fa 2>$dir/reads_too_short.fa`;
-
-	$file_reads_latest="$dir/reads_no_short.fa";
+	    my $ret_rem_short=`fastaparse.pl $file_reads_latest -a $options{l} > $dir/reads_no_short.fa 2>$dir/reads_too_short.fa`;
+      }
+	  $file_reads_latest="$dir/reads_no_short.fa";
     }
 
 
     #collapse reads
     if($options{m}){
+      unless ($options{'R'} && -s "$dir/reads_nr.fa") {
 
 		print MAP "collapsing reads\n";
 
-	if($options{v}){print STDERR "collapsing reads\n";}
+	    if($options{v}){print STDERR "collapsing reads\n";}
 
 		print MAP "collapse_reads_md.pl $file_reads_latest $prefix > $dir/reads_nr.fa\n";
 
-	my $ret_collapse=`collapse_reads_md.pl $file_reads_latest $prefix > $dir/reads_nr.fa`;
-
-	$file_reads_latest="$dir/reads_nr.fa";
+	    my $ret_collapse=`collapse_reads_md.pl $file_reads_latest $prefix > $dir/reads_nr.fa`;
+      }
+	  $file_reads_latest="$dir/reads_nr.fa";
     }
 
     #printing reads
@@ -660,9 +674,11 @@ sub test_prefix{
 
 
 sub cat_to{
-
     my($file_1,$file_2)=@_;
-
+    print STDERR "cat_to($file_1, $file_2)\n";
+    #system("mv $file_1 $file_2");
+    #system("ln -s $file_2 $file_1");
+    #return;
 
     open OUT, ">>$file_2" or die "cannot print to $file_2\n";
 
