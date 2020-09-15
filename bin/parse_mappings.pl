@@ -21,8 +21,7 @@ use strict;
 
 use Getopt::Std;
 
-my $usage =
-"$0 file_arf
+my $usage = qq/$0 file_arf
 
 Parses an arf file, and discards select mappings. Any files inputted with
 the options should be single-column format, with a single id on each line.
@@ -39,7 +38,7 @@ the options should be single-column format, with a single id on each line.
            reads that have more remaining mappings than this
 -j         Remove any unmatched nts in the very 3' end
 -k         Output progress to standard output
-";
+/;
 
 #input
 my $file_arf=shift or die $usage;

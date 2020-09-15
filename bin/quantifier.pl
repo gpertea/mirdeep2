@@ -203,6 +203,9 @@ my ( $name3, $path3, $extension3 );
 $name0.=$extension0;
 $name1.=$extension1;
 $name2.=$extension2;
+my $abspath_p=abs_path($options{'p'});
+my $abspath_m=abs_path($options{'m'});
+my $abspath_r=abs_path($options{'r'});
 
 
 if($options{'s'}){
@@ -227,6 +230,9 @@ my $outdir="${dir}/${dir}_${time}";
 if(not -d $outdir){
     mkdir($outdir);
 }
+
+#--
+
 
 ## check if reads file has correct format by quickly checking the first line
 open IN,"<$options{'r'}" or die "File $options{'r'} not found\n";
@@ -304,13 +310,13 @@ if(not $options{'n'}){
         ConvertFastaFile($options{'s'},$name3,'star',$species);
     }
 }
-if(not $options{'x'}){
-    chdir($outdir);
 
+
+chdir($outdir);
+if(not $options{'x'}) {
     Mapping();
-}else{
-    chdir($outdir);
 }
+
 ##now analyze expression file
 print STDERR "analyzing data\n";
 ReadinPrecursorFile();
@@ -593,10 +599,10 @@ sub ConvertFastaFile{
 
 sub ReadinPrecursorFile{
     my $id='';
-    open IN,"precursor.converted" or die "Precursor file precursor.converted not found\n";
+    my $fc='precursor.converted';
+    open IN, $fc or die "Precursor file $fc not found\n";
     while(<IN>){
         chomp;
-
         if(/^>(\S+)/){
             $id = $1;
             $hash{$id}{'seq'} = "";

@@ -675,7 +675,7 @@ sub test_prefix{
 
 sub cat_to{
     my($file_1,$file_2)=@_;
-    print STDERR "cat_to($file_1, $file_2)\n";
+    #print STDERR "cat_to($file_1, $file_2)\n";
     #system("mv $file_1 $file_2");
     #system("ln -s $file_2 $file_1");
     #return;
