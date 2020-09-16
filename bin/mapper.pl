@@ -31,7 +31,7 @@ use Cwd qw(abs_path);
 
 ####################################### USAGE ####################################################
 
-my $usage =q/
+my $usage =qq/
 $0 input_file_reads
 
 This script takes as input a file with deep sequencing reads (these can be in
@@ -384,11 +384,16 @@ sub process_reads{
     }
 
     #printing reads
-    if($options{s}){
+    if($options{s}) {
 
-	cat_to($file_reads_latest,$options{s});
+     if ($options{'p'}) {
+       cat_to($file_reads_latest,$options{s});
+     } else {
+      system("mv $file_reads_latest ".$options{s});
+      system('ln -s '.$options{s}." $file_reads_latest");
+     }
 
-#	my $ret=`cat $file_reads_latest >> $options{s}`;
+     #	my $ret=`cat $file_reads_latest >> $options{s}`;
     }
 
     return($file_reads_latest);

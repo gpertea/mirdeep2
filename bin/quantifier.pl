@@ -219,20 +219,18 @@ if($options{'s'}){
 }
 
 
-my $dir="expression_analyses";
+my $dir="quant";
 
-if(not -d $dir){
-    mkdir($dir);
-}
+#if(not -d $dir){
+#    mkdir($dir);
+#}
 
-
-my $outdir="${dir}/${dir}_${time}";
+my $outdir="${dir}_${time}";
 if(not -d $outdir){
     mkdir($outdir);
 }
 
 #--
-
 
 ## check if reads file has correct format by quickly checking the first line
 open IN,"<$options{'r'}" or die "File $options{'r'} not found\n";
@@ -327,7 +325,7 @@ if($options{'s'}){
     ReadinStarMappingFile();
 }
 ReadinReadsMappingFile();
-chdir("../../");
+chdir("../");
 
 PrintExpressionValues();
 PrintExpressionValuesSamples();
@@ -895,11 +893,12 @@ sub ReadinReadsMappingFile{
 sub PrintExpressionValues{
     my $mat;
 
-    open OUT1,">$outdir/miRNA_expressed.csv";
+    open(OUT1,">$outdir/miRNA_expressed.csv")
+       || die("Error creating $outdir/miRNA_expressed.csv\n");
 #    open OUT1B,">miRNAs_expressed_$time.csv";
-    open OUT2,">$outdir/miRNA_not_expressed.csv";
+    open(OUT2,">$outdir/miRNA_not_expressed.csv")
+       || die("Error creating $outdir/miRNA_not_expressed.csv\n");
     print OUT1 "#miRNA\tread_count\tprecursor\n";
-#    print OUT1B "#miRNA\tread count\tprecursor\n";
     print OUT2 "#miRNA\tread_count\n";
 
     my %seen;
@@ -1436,7 +1435,7 @@ sub CreateOutputMRD{
     } ## close $for my $k1
     close OUT;
     close HPNE;
-    chdir("../../");
+    chdir("../");
 }## close sub
 
 sub check_install{
