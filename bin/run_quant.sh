@@ -1,5 +1,5 @@
 #!/bin/bash
-dir='/home/gpertea/work/mirna/test'
+dir='/mnt/compute_data/smallRNA/smallRNA_platesALL/cutadapt_trimmed_cleaned'
 USAGE="Usage: \n\
  run_mirDeep.sh <sample_prefix>\n\
  \n\

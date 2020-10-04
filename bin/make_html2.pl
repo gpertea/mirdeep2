@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 use strict;
 use Getopt::Std;
 use Cwd;
@@ -314,7 +313,7 @@ sub CreateStructurePDFQuantifier{
         $offset = 0;
 
         $me=0;     ## mature end coordinate
-        @desc;
+        @desc=();
 
         $lflank1 = 0; ## length(string of left flank)
         $fl1 = 0;    ##
@@ -1607,10 +1606,10 @@ sub PrintQuantifier{
     ## now read in the mature_ref_this_species mapped against precursors from the quantifier module
 	## store ids in hashes
 
-    my ( $mature, $path0, $extension0 ) = fileparse ( $options{'k'}, '\..*' );
+    #my ( $mature, $path0, $extension0 ) = fileparse ( $options{'k'}, '\..*' );
     ##filename
 
-    $mature .= '_mapped.arf'; ## change .fa suffix to _mapped.arf
+    #$mature .= '_mapped.arf'; ## change .fa suffix to _mapped.arf
 
     my %exprs;
 	open IN,"<quant_${time}/miRNA_expressed.csv" or die "Error: File quant_${time}/miRNA_expressed.csv not found\n";
@@ -1635,7 +1634,7 @@ sub PrintQuantifier{
     my %exprs_sample;
     ## read in sample stuff to expression_value hash
     foreach(@files_mirnaex){
-        open IN,"<$_" or die "File $_ not asdfsd found\n";
+        open IN,"<$_" or die "File $_ not found\n";
 #        my $sample = $1 if(/_(\S\S\S).csv$/);
 		my @samples;
         while(<IN>){
